@@ -11,18 +11,15 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 import time  
 from selenium.webdriver.common.proxy import *
 
-# from pymongo import *
-
 import sys
 reload(sys)
 sys.setdefaultencoding('utf8')
 # print sys.getfilesystemencoding()
 
 
-# 'proxy': 'HWJB1R49VGL78Q3D:0C29FFF1CB8308C4@proxy.abuyun.com:9020'
-myProxy= 'proxy.abuyun.com:9020'
 
 def getChromeBrowser():
+    myProxy= 'proxy.abuyun.com:9020'
     option = webdriver.ChromeOptions()
     option.add_argument('--user-data-dir=C:\Users\LZ\AppData\Local\Google\Chrome\User Data\Default') #设置成用户自己的数据目录
     option.add_argument('--proxy-server=%s' % myProxy)
@@ -32,13 +29,6 @@ def getChromeBrowser():
 from base64 import b64encode        
 
 def getFirefoxBrowser():
-    # myProxy = "xx.xx.xx.xx:xxxx"
-    # proxy = {
-    #     "host": "proxy.com",
-    #     "port": "1000",
-    #     "user": "usr123",
-    #     "pass": "pwd123"
-    # }
     proxy = {'host': "proxy.abuyun.com", 'port': 9020, 'usr': "HWJB1R49VGL78Q3D", 'pwd': "0C29FFF1CB8308C4"}
 
     fp = webdriver.FirefoxProfile()
@@ -47,7 +37,6 @@ def getFirefoxBrowser():
     fp.set_preference('network.proxy.type', 1)
     fp.set_preference('network.proxy.http', proxy['host'])
     fp.set_preference('network.proxy.http_port', int(proxy['port']))
-
     fp.set_preference('network.proxy.ssl', proxy['host'])
     fp.set_preference('network.proxy.ssl_port', int(proxy['port']))
     fp.set_preference('network.proxy.ftp', proxy['host'])
@@ -56,48 +45,21 @@ def getFirefoxBrowser():
 
 # 禁止浏览器访问图片信息
     fp.set_preference('permissions.default.image', 2)
-# permissions.default.image
     credentials = '{usr}:{pwd}'.format(**proxy)
     credentials = b64encode(credentials.encode('ascii')).decode('utf-8')
     fp.set_preference('extensions.closeproxyauth.authtoken', credentials)
-
-    # driver = webdriver.Firefox(fp)
     browser = webdriver.Firefox(executable_path="geckodriver", firefox_profile=fp)
+    # browser = webdriver.Firefox(executable_path="geckodriver")
     return browser
-    # proxy = Proxy({
-    #     'proxyType': ProxyType.MANUAL,
-    #     'httpProxy': myProxy,
-    #     'ftpProxy': myProxy,
-    #     'sslProxy': myProxy,
-    #     'noProxy': '', # set this value as desired
-    #     'socksUsername':  'HWJB1R49VGL78Q3D',
-    #     'socksPassword':  '0C29FFF1CB8308C4',
-    #     })
-    # profile = webdriver.FirefoxProfile()
-    # profile.set_preference('network.http.phishy-userpass-length', 255)
-
-    # browser = webdriver.Firefox(executable_path="geckodriver", proxy=proxy)
-    # return browser
-
-    # pass
 
 # browser = getChromeBrowser()
 browser = getFirefoxBrowser()
 
-
-browser.get("https://www.baidu.com") # Load page
-time.sleep(10)
-
-# client = MongoClient()
-# db = client['result']
-# col = db['lagou']
 encodeName = "gb18030"
-
 CompanyNameSelector = ".company_main > h1 > a"
 CompanyBasicInfoSelector = '#basic_container ul > li'
 CompanyIntroSelector = ".company_intro_text"
 CompanyIntroHasExpandSelector = ".company_intro_text .company_content"
-
 CompanyNavsSelector = '#company_navs li'
 ExpandOrFoldSelector = ".text_over"
 Page404 = ".page404"
@@ -107,9 +69,16 @@ def getCompanyInfoUrl(cid):
     return "https://www.lagou.com/gongsi/" + str(cid) + ".html"
 
 # 函数返回类型    
-ResultOK = 0
-ResultShouldWait = 1
-ResultTerminate = 2
+# fun的返回值类型：
+ResultOK = 0 # 表示函数执行成功立即返回
+ResultShouldWait = 1 # 表示函数执行未成功，但未发现严重错误，应继续sleep and wait
+ResultTerminate = 2 # 表示函数执行未成功，并且发现严重错误，应立即停止
+
+# waitFunctionFinish的返回值类型：
+WaitOK = 0 # 表示等待的fun函数已经执行成功并且返回了ResultOK
+WaitTimeExceed = 1 # 表示等待的fun函数已经执行一直未成功，并且超出了等待时间长度
+WaitTerminate = 2 # 表示等待的fun函数未成功，并且fun函数返回了ResultTerminate
+HtmlParser = "html.parser"
 
 # 封装函数，等待函数执行确实执行完毕，或者超出了时间上限
 # 如果返回true表示执行成功，false表示超出时间上限
@@ -118,38 +87,28 @@ def waitFunctionFinish(fun, maxWaitTime = MaxWaitTime, sleepSeconds = 1):
     for i in xrange(maxWaitTime):
         resultType = fun()
         if resultType == ResultOK:
-            return True
+            return WaitOK
         elif resultType == ResultShouldWait:
             time.sleep(sleepSeconds)
         else:
-            return False
+            return WaitTerminate
     print "time excceed"
-    return False
+    return WaitTimeExceed
 
-def getCompanyInfo(cid, browser):
-    print '\n\n'
-    print cid, "-"*100
-    time.sleep(4)
+def getCompanyInfo(cid, browser):    
+    print '\n\n', cid, "-"*100
+    # time.sleep(4)
     url = getCompanyInfoUrl(cid)
-    try:
-        browser.get(url)
-    except Exception, e:    
-        print "WebDriverException occurs !!"
-        return 
-
-    
     soup = None
     def checkPageLoadFinish():
-        soup = BeautifulSoup(browser.page_source, "html.parser")
+        soup = BeautifulSoup(browser.page_source, HtmlParser)
         if len(soup.select(Page404)) > 0:
-            print "compage: ", cid, "does not exsit: page404 fuound"
+            print "company: ", cid, "does not exsit: page404 fuound"
             return ResultTerminate
 
         if len(soup.select(".incomplete_tips")) > 0:
             print u'这个公司的主页还在建设中...'
             return ResultTerminate
-        # 这个公司的主页还在建设中
-
         if len(soup.select(CompanyNameSelector)) == 0:
             print "CompanyNameSelector has not yet present"
         elif len(soup.select(CompanyBasicInfoSelector)) == 0:
@@ -160,63 +119,73 @@ def getCompanyInfo(cid, browser):
             return ResultOK
         return ResultShouldWait
 
-    if waitFunctionFinish(checkPageLoadFinish):
-        pass
-    else:
-        return 
+    def loadPage():
+        try:
+            browser.get(url)
+            waitType = waitFunctionFinish(checkPageLoadFinish)
+            if waitType == WaitOK:
+                return ResultOK
+            elif waitType == WaitTerminate:
+                return ResultTerminate
+            elif waitType == WaitTimeExceed:
+                return  ResultTimeExceed
+            else:
+                print "Error occurs in loadPage, waitType is unknown"
+        except Exception, e:    
+            print "WebDriverException occurs, and reload"
+            return ResultShouldWait
 
+    if waitFunctionFinish(loadPage) != WaitOK:
+        return
 
     content = ""
-    soup = BeautifulSoup(browser.page_source, "html.parser")
+
+    # 获取 公司简介内容content：
+    soup = BeautifulSoup(browser.page_source, HtmlParser)
+
     if len(soup.select(ExpandOrFoldSelector)) == 0:
         content = soup.select(CompanyIntroSelector)[0].text
+        print "No expand button"
+    elif soup.select(ExpandOrFoldSelector)[0].attrs.has_key("style") and\
+         soup.select(ExpandOrFoldSelector)[0].attrs["style"]:
+        content = soup.select(CompanyIntroHasExpandSelector)[0].text
+        print "Expand button must be hided "
+        
     else :
-
         try:
             browser.find_element_by_class_name("text_over").click()
             def checkExpandChickFinish():
-                soup = BeautifulSoup(browser.page_source, "html.parser")
+                soup = BeautifulSoup(browser.page_source, HtmlParser)
                 if soup.select(ExpandOrFoldSelector)[0].text == u'收起':
                     return ResultOK
                 else:
+                    print u"Not found expand button"
                     return ResultShouldWait
-            if waitFunctionFinish(checkExpandChickFinish):
-                soup = BeautifulSoup(browser.page_source, "html.parser")
+            if waitFunctionFinish(checkExpandChickFinish) == WaitOK:
+                soup = BeautifulSoup(browser.page_source, HtmlParser)
                 content = soup.select(CompanyIntroHasExpandSelector)[0].text
             else:
-                print 'Expand is no good !!!'
-                return 
+                print 'Expand button is not good'
+                content = soup.select(CompanyIntroHasExpandSelector)[0].text 
+                # return 
         except Exception, e:
             print u"It has \'text_over\', but maybe it hides"
             content = soup.select(CompanyIntroHasExpandSelector)[0].text
 
 
     total = int(filter(unicode.isdigit, soup.select(CompanyNavsSelector)[1].text))
-
     name = soup.select(CompanyNameSelector)[0].text.strip()
     info = soup.select(CompanyBasicInfoSelector)
     tag = info[0].find('span').text.encode(encodeName, "ignore")
     process = info[1].find('span').text.encode(encodeName, "ignore")
     content = content.encode(encodeName, "ignore")
 
-    # obj = {
-    #     "cid": cid,
-    #     "url": url.decode(encodeName).encode("utf-8"),
-    #     "name": name.decode(encodeName).encode("utf-8"),
-    #     "content": cont.decode(encodeName).encode("utf-8"),
-    #     "tag": tag.decode(encodeName).encode("utf-8"),
-    #     "process": process.decode(encodeName).encode("utf-8"),
-    #     "salary": [],
-    #     "total": total
-    # }
     print "compange cid:", cid
     print "compange name:", name
     print "compange content:", content
     print "compange tag:", tag
     print "compange process:", process
     print "compange total:", total
-        # col.insert(obj)
-        # getPosition(cid, browser)
 
 
 def getPosition(cid, browser):
@@ -260,6 +229,6 @@ def getPosition(cid, browser):
 
         #soup = BeautifulSoup(browser.page_source, "html.parser")
 
-for cid in range(22790, 22890):
+for cid in range(22792, 52793):
     getCompanyInfo(cid, browser)
 # getPosition(cid, browser)
