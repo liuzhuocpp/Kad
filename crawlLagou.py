@@ -154,14 +154,14 @@ def getCompanyInfo(cid, browser):
     else :
         try:
             browser.find_element_by_class_name("text_over").click()
-            def checkExpandChickFinish():
+            def checkExpandClickFinish():
                 soup = BeautifulSoup(browser.page_source, HtmlParser)
                 if soup.select(ExpandOrFoldSelector)[0].text == u'收起':
                     return ResultOK
                 else:
                     print u"Not found expand button"
                     return ResultShouldWait
-            if waitFunctionFinish(checkExpandChickFinish) == WaitOK:
+            if waitFunctionFinish(checkExpandClickFinish, 3) == WaitOK:
                 soup = BeautifulSoup(browser.page_source, HtmlParser)
                 content = soup.select(CompanyIntroHasExpandSelector)[0].text
             else:
