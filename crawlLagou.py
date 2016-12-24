@@ -147,7 +147,7 @@ def getCompanyInfo(cid, browser):
         content = soup.select(CompanyIntroSelector)[0].text
         print "No expand button"
     elif soup.select(ExpandOrFoldSelector)[0].attrs.has_key("style") and\
-         soup.select(ExpandOrFoldSelector)[0].attrs["style"]:
+         soup.select(ExpandOrFoldSelector)[0].attrs["style"].find("none") != -1:
         content = soup.select(CompanyIntroHasExpandSelector)[0].text
         print "Expand button must be hided "
         
@@ -229,6 +229,8 @@ def getPosition(cid, browser):
 
         #soup = BeautifulSoup(browser.page_source, "html.parser")
 
-for cid in range(22792, 52793):
+for cid in range(22809, 52809 + 1):
+
     getCompanyInfo(cid, browser)
+    time.sleep(3)
 # getPosition(cid, browser)
