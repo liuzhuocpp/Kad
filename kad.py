@@ -39,23 +39,47 @@ def getFirefoxBrowser():
     #     "user": "usr123",
     #     "pass": "pwd123"
     # }
+    proxy = {'host': "proxy.abuyun.com", 'port': 9020, 'usr': "HWJB1R49VGL78Q3D", 'pwd': "0C29FFF1CB8308C4"}
 
-    proxy = Proxy({
-        'proxyType': ProxyType.MANUAL,
-        'httpProxy': myProxy,
-        'ftpProxy': myProxy,
-        'sslProxy': myProxy,
-        'noProxy': '', # set this value as desired
-        'socksUsername':  'HWJB1R49VGL78Q3D',
-        'socksPassword':  '0C29FFF1CB8308C4',
-        })
-    browser = webdriver.Firefox(executable_path="geckodriver", proxy=proxy)
+    fp = webdriver.FirefoxProfile()
+
+    fp.add_extension('closeproxy.xpi')
+    fp.set_preference('network.proxy.type', 1)
+    fp.set_preference('network.proxy.http', proxy['host'])
+    fp.set_preference('network.proxy.http_port', int(proxy['port']))
+
+    fp.set_preference('network.proxy.ssl', proxy['host'])
+    fp.set_preference('network.proxy.ssl_port', int(proxy['port']))
+    fp.set_preference('network.proxy.ftp', proxy['host'])
+    fp.set_preference('network.proxy.ftp_port', int(proxy['port']))       
+    fp.set_preference('network.proxy.no_proxies_on', 'localhost, 127.0.0.1')
+
+    credentials = '{usr}:{pwd}'.format(**proxy)
+    credentials = b64encode(credentials.encode('ascii')).decode('utf-8')
+    fp.set_preference('extensions.closeproxyauth.authtoken', credentials)
+
+    # driver = webdriver.Firefox(fp)
+    browser = webdriver.Firefox(executable_path="geckodriver", firefox_profile=fp)
     return browser
+    # proxy = Proxy({
+    #     'proxyType': ProxyType.MANUAL,
+    #     'httpProxy': myProxy,
+    #     'ftpProxy': myProxy,
+    #     'sslProxy': myProxy,
+    #     'noProxy': '', # set this value as desired
+    #     'socksUsername':  'HWJB1R49VGL78Q3D',
+    #     'socksPassword':  '0C29FFF1CB8308C4',
+    #     })
+    # profile = webdriver.FirefoxProfile()
+    # profile.set_preference('network.http.phishy-userpass-length', 255)
 
-    pass
+    # browser = webdriver.Firefox(executable_path="geckodriver", proxy=proxy)
+    # return browser
 
-browser = getChromeBrowser()
-# browser = getFirefoxBrowser()
+    # pass
+
+# browser = getChromeBrowser()
+browser = getFirefoxBrowser()
 
 
 browser.get("https://www.baidu.com") # Load page
@@ -155,6 +179,7 @@ def getCompanyInfo(cid, browser):
     info = soup.select(CompanyBasicInfoSelector)
     tag = info[0].find('span').text.encode(encodeName, "ignore")
     process = info[1].find('span').text.encode(encodeName, "ignore")
+    content = content.encode(encodeName, "ignore")
 
     # obj = {
     #     "cid": cid,
@@ -168,7 +193,7 @@ def getCompanyInfo(cid, browser):
     # }
     print "compange cid:", cid
     print "compange name:", name
-    print "compange content:", content.encode(encodeName, "ignore")
+    print "compange content:", content
     print "compange tag:", tag
     print "compange process:", process
     print "compange total:", total
