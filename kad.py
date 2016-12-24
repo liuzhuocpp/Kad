@@ -54,6 +54,9 @@ def getFirefoxBrowser():
     fp.set_preference('network.proxy.ftp_port', int(proxy['port']))       
     fp.set_preference('network.proxy.no_proxies_on', 'localhost, 127.0.0.1')
 
+# 禁止浏览器访问图片信息
+    fp.set_preference('permissions.default.image', 2)
+# permissions.default.image
     credentials = '{usr}:{pwd}'.format(**proxy)
     credentials = b64encode(credentials.encode('ascii')).decode('utf-8')
     fp.set_preference('extensions.closeproxyauth.authtoken', credentials)
@@ -128,13 +131,24 @@ def getCompanyInfo(cid, browser):
     print cid, "-"*100
     time.sleep(4)
     url = getCompanyInfoUrl(cid)
-    browser.get(url)
+    try:
+        browser.get(url)
+    except Exception, e:    
+        print "WebDriverException occurs !!"
+        return 
+
+    
     soup = None
     def checkPageLoadFinish():
         soup = BeautifulSoup(browser.page_source, "html.parser")
         if len(soup.select(Page404)) > 0:
             print "compage: ", cid, "does not exsit: page404 fuound"
             return ResultTerminate
+
+        if len(soup.select(".incomplete_tips")) > 0:
+            print u'这个公司的主页还在建设中...'
+            return ResultTerminate
+        # 这个公司的主页还在建设中
 
         if len(soup.select(CompanyNameSelector)) == 0:
             print "CompanyNameSelector has not yet present"
@@ -157,22 +171,26 @@ def getCompanyInfo(cid, browser):
     if len(soup.select(ExpandOrFoldSelector)) == 0:
         content = soup.select(CompanyIntroSelector)[0].text
     else :
+
         try:
             browser.find_element_by_class_name("text_over").click()
-        except Exception, e:
-            print u"严重异常!!!"
-        def checkExpandChickFinish():
-            soup = BeautifulSoup(browser.page_source, "html.parser")
-            if soup.select(ExpandOrFoldSelector)[0].text == u'收起':
-                return ResultOK
+            def checkExpandChickFinish():
+                soup = BeautifulSoup(browser.page_source, "html.parser")
+                if soup.select(ExpandOrFoldSelector)[0].text == u'收起':
+                    return ResultOK
+                else:
+                    return ResultShouldWait
+            if waitFunctionFinish(checkExpandChickFinish):
+                soup = BeautifulSoup(browser.page_source, "html.parser")
+                content = soup.select(CompanyIntroHasExpandSelector)[0].text
             else:
-                return ResultShouldWait
-        if waitFunctionFinish(checkExpandChickFinish):
-            soup = BeautifulSoup(browser.page_source, "html.parser")
+                print 'Expand is no good !!!'
+                return 
+        except Exception, e:
+            print u"It has \'text_over\', but maybe it hides"
             content = soup.select(CompanyIntroHasExpandSelector)[0].text
-        else:
-            print 'Expand is no good !!!'
-            return 
+
+
     total = int(filter(unicode.isdigit, soup.select(CompanyNavsSelector)[1].text))
 
     name = soup.select(CompanyNameSelector)[0].text.strip()
@@ -242,6 +260,6 @@ def getPosition(cid, browser):
 
         #soup = BeautifulSoup(browser.page_source, "html.parser")
 
-for cid in range(22710, 22721):
+for cid in range(22790, 22890):
     getCompanyInfo(cid, browser)
 # getPosition(cid, browser)
