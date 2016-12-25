@@ -143,32 +143,10 @@ def getCompanyInfo(cid, browser):
     # time.sleep(4)
     url = getCompanyInfoUrl(cid)
     soup = None
-    # def checkPageLoadFinish():
-    #     soup = BeautifulSoup(browser.page_source, HtmlParser)
-    #     if len(soup.select(Page404)) > 0:
-    #         print "company: ", cid, "does not exsit: page404 fuound"
-    #         return ResultTerminate
-
-    #     if len(soup.select(".incomplete_tips")) > 0:
-    #         print u'这个公司的主页还在建设中...'
-    #         return ResultTerminate
-    #     if len(soup.select(CompanyNameSelector)) == 0:
-    #         print "CompanyNameSelector has not yet present"
-    #     elif len(soup.select(CompanyBasicInfoSelector)) == 0:
-    #         print "CompanyBasicInfoSelector has not yet present"
-    #     elif len(soup.select(CompanyIntroSelector)) == 0:
-    #         print "CompanyIntroSelector has not yet present"        
-    #     else:
-    #         return ResultOK
-    #     return ResultShouldWait
-
-    def loadPage():
         try:
             browser.get(url)
-            print u"browser.get end-----"
-            
-        except Exception, e:    
-            print "WebDriverException occurs, and reload", e
+            print u"browser.get end-----"            
+        except Exception, e:
             # return ResultShouldWait
         hasRealDataEC = AndEC(EC.presence_of_element_located((By.CSS_SELECTOR, CompanyNameSelector)),\
                             EC.presence_of_element_located((By.CSS_SELECTOR, CompanyBasicInfoSelector)),\
@@ -177,14 +155,9 @@ def getCompanyInfo(cid, browser):
         pageStillConstruction = EC.presence_of_element_located((By.CSS_SELECTOR, ".incomplete_tips"))
 
         ansIndex = [-1]
-        allEC = OrEC(ansIndex, hasRealDataEC, page404EC, pageStillConstruction)
-        # allEC = OrEC(ansIndex, page404EC)
-        # allEC = OrEC(ansIndex, hasRealDataEC)
-        
+        allEC = OrEC(ansIndex, hasRealDataEC, page404EC, pageStillConstruction)        
         try:
             element = WebDriverWait(browser, 10).until(allEC)
-            # element = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, CompanyNameSelector)))
-            # element = WebDriverWait(browser, 10).until(hasRealDataEC)
         except Exception, e:   
             print "Error in wait page element load finish: ", e
             return ResultShouldWait
@@ -202,7 +175,6 @@ def getCompanyInfo(cid, browser):
             print u"Error ansIndex:", ansIndex
             return ResultTerminate
 
-    waitLoadPageFinishType = waitFunctionFinish(loadPage)
     if waitLoadPageFinishType == WaitTerminate:
         return
     if waitLoadPageFinishType == WaitTimeExceed:
@@ -222,33 +194,47 @@ def getCompanyInfo(cid, browser):
         print "Expand button must be hided "
         
     else :
-        try:
-            browser.find_element_by_class_name("text_over").click()
-            def checkExpandClickFinish():
-                soup = BeautifulSoup(browser.page_source, HtmlParser)
-                if soup.select(ExpandOrFoldSelector)[0].text == u'收起':
-                    return ResultOK
-                else:
-                    print u"Not found expand button"
-                    return ResultShouldWait
-            if waitFunctionFinish(checkExpandClickFinish, 3) == WaitOK:
-                soup = BeautifulSoup(browser.page_source, HtmlParser)
-                content = soup.select(CompanyIntroHasExpandSelector)[0].text
+        def checkExpandClickFinish():
+            soup = BeautifulSoup(browser.page_source, HtmlParser)
+            if soup.select(ExpandOrFoldSelector)[0].text == u'收起':
+                return ResultOK
             else:
-                print 'Expand button is not good'
-                content = soup.select(CompanyIntroHasExpandSelector)[0].text 
-                # return 
-        except Exception, e:
-            print u"It has \'text_over\', but maybe it hides"
+                print u"Not found expand button"
+                return ResultShouldWait
+
+        def ensureClickFinish():
+            try:
+                browser.find_element_by_css_selector(ExpandOrFoldSelector).click()
+            except Exception, e:
+                print "Exception in ensureClickFinish: ", e
+                return ResultShouldWait
+
+            waitType = waitFunctionFinish(checkExpandClickFinish, maxWaitTime = 2, sleepSeconds = 0.5 )
+            if waitType == WaitOK:
+                return ResultOK
+            elif waitType == WaitTimeExceed:
+                return ResultShouldWait
+            else:
+                print u"unknown waitType in ensureChickFinish"
+                return ResultTerminate
+
+        waitType = waitFunctionFinish(ensureClickFinish, 30)
+        soup = BeautifulSoup(browser.page_source, HtmlParser)                
+        if waitType == WaitOK:
             content = soup.select(CompanyIntroHasExpandSelector)[0].text
+        else:
+            print u'expand the company intro info not successful'
+            content = soup.select(CompanyIntroSelector)[0].text
 
 
+
+    content = content.encode(encodeName, "ignore")
     total = int(filter(unicode.isdigit, soup.select(CompanyNavsSelector)[1].text))
     name = soup.select(CompanyNameSelector)[0].text.strip()
     info = soup.select(CompanyBasicInfoSelector)
     tag = info[0].find('span').text.encode(encodeName, "ignore")
     process = info[1].find('span').text.encode(encodeName, "ignore")
-    content = content.encode(encodeName, "ignore")
+    
 
     print "compange cid:", cid
     print "compange name:", name
@@ -299,8 +285,10 @@ def getPosition(cid, browser):
 
         #soup = BeautifulSoup(browser.page_source, "html.parser")
 
-for cid in range(22819, 32819 + 1):
-
-    getCompanyInfo(cid, browser)
-    # time.sleep(3)
+for cid in range(22824, 52824 + 1):
+    try:        
+        getCompanyInfo(cid, browser)
+    except Exception, e: # 当有任何Exception时候，直接pass
+        print "Exception in getCompanyInfo", e
+    time.sleep(2)
 # getPosition(cid, browser)
