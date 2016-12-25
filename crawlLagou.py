@@ -143,10 +143,12 @@ def getCompanyInfo(cid, browser):
     # time.sleep(4)
     url = getCompanyInfoUrl(cid)
     soup = None
+    def ensureLoadPage():
         try:
             browser.get(url)
             print u"browser.get end-----"            
         except Exception, e:
+            print "WebDriverException occurs, and reload: ", e
             # return ResultShouldWait
         hasRealDataEC = AndEC(EC.presence_of_element_located((By.CSS_SELECTOR, CompanyNameSelector)),\
                             EC.presence_of_element_located((By.CSS_SELECTOR, CompanyBasicInfoSelector)),\
@@ -175,6 +177,7 @@ def getCompanyInfo(cid, browser):
             print u"Error ansIndex:", ansIndex
             return ResultTerminate
 
+    waitLoadPageFinishType = waitFunctionFinish(ensureLoadPage)
     if waitLoadPageFinishType == WaitTerminate:
         return
     if waitLoadPageFinishType == WaitTimeExceed:
