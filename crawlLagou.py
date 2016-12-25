@@ -18,7 +18,45 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf8')
 # print sys.getfilesystemencoding()
+class OrEC:
+    """ Use with WebDriverWait to combine expected_conditions
+        in an OR.
+    """
+    # callBackIndex 是一个列表只有一个元素，存储下标
+    def __init__(self, callBackIndex, *args):
+        self.callBackIndex = callBackIndex
+        self.ecs = args
+    def __call__(self, driver):
+        for i in xrange(len(self.ecs)):
+            fn = self.ecs[i]
+            ans = None
+            try:
+                ans = fn(driver)
+            except:
+                pass
+            if ans:
+                self.callBackIndex[0] = i
+                return ans
+        return None
 
+class AndEC:
+    """ Use with WebDriverWait to combine expected_conditions
+        in an AND.
+    """
+    def __init__(self, *args):
+        self.ecs = args
+    def __call__(self, driver):
+        resTuple = ()
+        for fn in self.ecs:
+            ans = None
+            try:
+                ans = fn(driver)
+            except:
+                ans = None
+            if bool(ans) == False:                
+                return ()
+            resTuple += (ans,)
+        return resTuple
 
 
 def getChromeBrowser():
@@ -105,24 +143,24 @@ def getCompanyInfo(cid, browser):
     # time.sleep(4)
     url = getCompanyInfoUrl(cid)
     soup = None
-    def checkPageLoadFinish():
-        soup = BeautifulSoup(browser.page_source, HtmlParser)
-        if len(soup.select(Page404)) > 0:
-            print "company: ", cid, "does not exsit: page404 fuound"
-            return ResultTerminate
+    # def checkPageLoadFinish():
+    #     soup = BeautifulSoup(browser.page_source, HtmlParser)
+    #     if len(soup.select(Page404)) > 0:
+    #         print "company: ", cid, "does not exsit: page404 fuound"
+    #         return ResultTerminate
 
-        if len(soup.select(".incomplete_tips")) > 0:
-            print u'这个公司的主页还在建设中...'
-            return ResultTerminate
-        if len(soup.select(CompanyNameSelector)) == 0:
-            print "CompanyNameSelector has not yet present"
-        elif len(soup.select(CompanyBasicInfoSelector)) == 0:
-            print "CompanyBasicInfoSelector has not yet present"
-        elif len(soup.select(CompanyIntroSelector)) == 0:
-            print "CompanyIntroSelector has not yet present"        
-        else:
-            return ResultOK
-        return ResultShouldWait
+    #     if len(soup.select(".incomplete_tips")) > 0:
+    #         print u'这个公司的主页还在建设中...'
+    #         return ResultTerminate
+    #     if len(soup.select(CompanyNameSelector)) == 0:
+    #         print "CompanyNameSelector has not yet present"
+    #     elif len(soup.select(CompanyBasicInfoSelector)) == 0:
+    #         print "CompanyBasicInfoSelector has not yet present"
+    #     elif len(soup.select(CompanyIntroSelector)) == 0:
+    #         print "CompanyIntroSelector has not yet present"        
+    #     else:
+    #         return ResultOK
+    #     return ResultShouldWait
 
     def loadPage():
         try:
@@ -132,16 +170,37 @@ def getCompanyInfo(cid, browser):
         except Exception, e:    
             print "WebDriverException occurs, and reload", e
             # return ResultShouldWait
+        hasRealDataEC = AndEC(EC.presence_of_element_located((By.CSS_SELECTOR, CompanyNameSelector)),\
+                            EC.presence_of_element_located((By.CSS_SELECTOR, CompanyBasicInfoSelector)),\
+                            EC.presence_of_element_located((By.CSS_SELECTOR, CompanyIntroSelector)))
+        page404EC = EC.presence_of_element_located((By.CSS_SELECTOR, Page404))
+        pageStillConstruction = EC.presence_of_element_located((By.CSS_SELECTOR, ".incomplete_tips"))
 
-        waitType = waitFunctionFinish(checkPageLoadFinish)
-        if waitType == WaitOK:
+        ansIndex = [-1]
+        allEC = OrEC(ansIndex, hasRealDataEC, page404EC, pageStillConstruction)
+        # allEC = OrEC(ansIndex, page404EC)
+        # allEC = OrEC(ansIndex, hasRealDataEC)
+        
+        try:
+            element = WebDriverWait(browser, 10).until(allEC)
+            # element = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, CompanyNameSelector)))
+            # element = WebDriverWait(browser, 10).until(hasRealDataEC)
+        except Exception, e:   
+            print "Error in wait page element load finish: ", e
+            return ResultShouldWait
+
+        ansIndex = ansIndex[0]
+        if ansIndex == 0:
             return ResultOK
-        elif waitType == WaitTerminate:
+        elif ansIndex == 1:
+            print "page404"
             return ResultTerminate
-        elif waitType == WaitTimeExceed:
-            return  ResultShouldWait
+        elif ansIndex == 2:
+            print u"company page still construction"
+            return ResultTerminate
         else:
-            print "Error occurs in loadPage, waitType is unknown"
+            print u"Error ansIndex:", ansIndex
+            return ResultTerminate
 
     waitLoadPageFinishType = waitFunctionFinish(loadPage)
     if waitLoadPageFinishType == WaitTerminate:
@@ -240,7 +299,7 @@ def getPosition(cid, browser):
 
         #soup = BeautifulSoup(browser.page_source, "html.parser")
 
-for cid in range(22809, 52809 + 1):
+for cid in range(22819, 32819 + 1):
 
     getCompanyInfo(cid, browser)
     # time.sleep(3)
