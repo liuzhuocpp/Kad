@@ -13,11 +13,25 @@ from selenium.webdriver.common.proxy import *
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
+from base64 import b64encode        
 import sys
+
 reload(sys)
 sys.setdefaultencoding('utf8')
 # print sys.getfilesystemencoding()
+
+# 常量：
+encodeName = "gb18030"
+CompanyNameSelector = ".company_main > h1 > a"
+CompanyBasicInfoSelector = '#basic_container ul > li'
+CompanyIntroSelector = ".company_intro_text"
+CompanyIntroHasExpandSelector = ".company_intro_text .company_content"
+CompanyNavsSelector = '#company_navs li'
+ExpandOrFoldSelector = ".text_over"
+Page404 = ".page404"
+MaxWaitTime = 10
+
+
 class OrEC:
     """ Use with WebDriverWait to combine expected_conditions
         in an OR.
@@ -67,7 +81,6 @@ def getChromeBrowser():
     browser = webdriver.Chrome(executable_path="chromedriver", chrome_options=option)
     return browser
 
-from base64 import b64encode        
 
 def getFirefoxBrowser():
     proxy = {'host': "proxy.abuyun.com", 'port': 9020, 'usr': "HWJB1R49VGL78Q3D", 'pwd': "0C29FFF1CB8308C4"}
@@ -95,18 +108,8 @@ def getFirefoxBrowser():
     browser.set_page_load_timeout(0)
     return browser
 
-# browser = getChromeBrowser()
-browser = getFirefoxBrowser()
 
-encodeName = "gb18030"
-CompanyNameSelector = ".company_main > h1 > a"
-CompanyBasicInfoSelector = '#basic_container ul > li'
-CompanyIntroSelector = ".company_intro_text"
-CompanyIntroHasExpandSelector = ".company_intro_text .company_content"
-CompanyNavsSelector = '#company_navs li'
-ExpandOrFoldSelector = ".text_over"
-Page404 = ".page404"
-MaxWaitTime = 10
+
 
 def getCompanyInfoUrl(cid):
     return "https://www.lagou.com/gongsi/" + str(cid) + ".html"
@@ -138,10 +141,18 @@ def waitFunctionFinish(fun, maxWaitTime = MaxWaitTime, sleepSeconds = 1):
     print "time excceed"
     return WaitTimeExceed
 
-def getCompanyInfo(cid, browser):    
+def _getCompanyInfo(cid, browser):    
     print '\n\n', cid, "-"*100
-    # time.sleep(4)
-    url = getCompanyInfoUrl(cid)
+    answer = {
+        "cid":-1, 
+        "name":"", 
+        "content":"", 
+        "tag":"", 
+        "process":"", 
+        "total":"", 
+    }
+
+    url = getCompanyInfoUrl(cid)    
     soup = None
     def ensureLoadPage():
         try:
@@ -179,10 +190,10 @@ def getCompanyInfo(cid, browser):
 
     waitLoadPageFinishType = waitFunctionFinish(ensureLoadPage)
     if waitLoadPageFinishType == WaitTerminate:
-        return
+        return answer
     if waitLoadPageFinishType == WaitTimeExceed:
         print u'wait page load time exceed'
-        return
+        return answer
     content = ""
 
     # 获取 公司简介内容content：
@@ -239,12 +250,23 @@ def getCompanyInfo(cid, browser):
     process = info[1].find('span').text.encode(encodeName, "ignore")
     
 
-    print "compange cid:", cid
-    print "compange name:", name
-    print "compange content:", content
-    print "compange tag:", tag
-    print "compange process:", process
-    print "compange total:", total
+
+    print "company cid:", cid
+    print "company name:", name
+    print "company content:", content
+    print "company tag:", tag
+    print "company process:", process
+    print "company total:", total
+
+    answer = {
+        "cid":cid, 
+        "name":name, 
+        "content":content, 
+        "tag":tag, 
+        "process":process, 
+        "total":total, 
+    }
+    return answer
 
 
 def getPosition(cid, browser):
@@ -288,10 +310,49 @@ def getPosition(cid, browser):
 
         #soup = BeautifulSoup(browser.page_source, "html.parser")
 
-for cid in range(22824, 52824 + 1):
+browser = getFirefoxBrowser()
+def getCompanyInfo(cid):
+
+    
+    answer = {
+        "cid":-1, 
+        "name":"", 
+        "content":"", 
+        "tag":"", 
+        "process":"", 
+        "total":"", 
+    }
     try:        
-        getCompanyInfo(cid, browser)
+        answer = _getCompanyInfo(cid, browser)
     except Exception, e: # 当有任何Exception时候，直接pass
         print "Exception in getCompanyInfo", e
+
+    answer["url"] = getCompanyInfoUrl(cid)
+    answer["salary"] = []
     time.sleep(2)
+    return answer
+
+
+
+if __name__ == '__main__':
+
+    for cid in range(22824, 52824 + 1):
+        # answer = getCompanyInfo(cid)
+        answer = getCompanyInfo(cid)
+        print "answer:" + "-"*50
+        print "answer cid:", answer['cid']
+        print "answer name:", answer['name']
+        print "answer content:", answer['content']
+        print "answer tag:", answer['tag']
+        print "answer process:", answer['process']
+        print "answer total:", answer['total']
+        print "answer url:", answer['url']
+        print "answer salary:", answer['salary']
+
+
+    # try:        
+    #     getCompanyInfo(cid, browser)
+    # except Exception, e: # 当有任何Exception时候，直接pass
+    #     print "Exception in getCompanyInfo", e
+    # time.sleep(2)
 # getPosition(cid, browser)
