@@ -135,9 +135,11 @@ def getCompanyInfo(cid, browser):
             print "WebDriverException occurs, and reload"
             return ResultShouldWait
 
-    if waitFunctionFinish(loadPage) != WaitOK:
+    if waitFunctionFinish(loadPage) == WaitTerminate:
         return
-
+    if waitFunctionFinish(loadPage) == WaitTimeExceed:
+        print u'wait page load time exceed'
+        return
     content = ""
 
     # 获取 公司简介内容content：
