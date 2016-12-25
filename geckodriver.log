@@ -1,5 +1,6 @@
-1482586305858	geckodriver	INFO	Listening on 127.0.0.1:51869
-1482586307857	mozprofile::profile	INFO	Using profile path C:\Users\LZ\AppData\Local\Temp\rust_mozprofile.v5p0dFmMTWX5
+1482665277406	geckodriver	INFO	Listening on 127.0.0.1:9309
+1482665279425	mozprofile::profile	INFO	Using profile path C:\Users\zml\AppData\Local\Temp\rust_mozprofile.Z6Q7TUQJFp4m
+
 1482586307870	geckodriver::marionette	INFO	Starting browser D:\Program Files (x86)\Mozilla Firefox\firefox.exe
 1482586307897	geckodriver::marionette	INFO	Connecting to Marionette on localhost:51875
 1482586308089	addons.manager	DEBUG	Application has been upgraded
