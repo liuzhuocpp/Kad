@@ -128,7 +128,7 @@ def getCompanyInfo(cid, browser):
             elif waitType == WaitTerminate:
                 return ResultTerminate
             elif waitType == WaitTimeExceed:
-                return  ResultTimeExceed
+                return  ResultShouldWait
             else:
                 print "Error occurs in loadPage, waitType is unknown"
         except Exception, e:    
@@ -232,5 +232,5 @@ def getPosition(cid, browser):
 for cid in range(22809, 52809 + 1):
 
     getCompanyInfo(cid, browser)
-    time.sleep(3)
+    # time.sleep(3)
 # getPosition(cid, browser)
