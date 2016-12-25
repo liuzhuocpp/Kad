@@ -10,6 +10,9 @@ from bs4 import BeautifulSoup
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 import time  
 from selenium.webdriver.common.proxy import *
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 import sys
 reload(sys)
@@ -50,6 +53,8 @@ def getFirefoxBrowser():
     fp.set_preference('extensions.closeproxyauth.authtoken', credentials)
     browser = webdriver.Firefox(executable_path="geckodriver", firefox_profile=fp)
     # browser = webdriver.Firefox(executable_path="geckodriver")
+
+    browser.set_page_load_timeout(0)
     return browser
 
 # browser = getChromeBrowser()
@@ -122,22 +127,26 @@ def getCompanyInfo(cid, browser):
     def loadPage():
         try:
             browser.get(url)
-            waitType = waitFunctionFinish(checkPageLoadFinish)
-            if waitType == WaitOK:
-                return ResultOK
-            elif waitType == WaitTerminate:
-                return ResultTerminate
-            elif waitType == WaitTimeExceed:
-                return  ResultShouldWait
-            else:
-                print "Error occurs in loadPage, waitType is unknown"
+            print u"browser.get end-----"
+            
         except Exception, e:    
-            print "WebDriverException occurs, and reload"
-            return ResultShouldWait
+            print "WebDriverException occurs, and reload", e
+            # return ResultShouldWait
 
-    if waitFunctionFinish(loadPage) == WaitTerminate:
+        waitType = waitFunctionFinish(checkPageLoadFinish)
+        if waitType == WaitOK:
+            return ResultOK
+        elif waitType == WaitTerminate:
+            return ResultTerminate
+        elif waitType == WaitTimeExceed:
+            return  ResultShouldWait
+        else:
+            print "Error occurs in loadPage, waitType is unknown"
+
+    waitLoadPageFinishType = waitFunctionFinish(loadPage)
+    if waitLoadPageFinishType == WaitTerminate:
         return
-    if waitFunctionFinish(loadPage) == WaitTimeExceed:
+    if waitLoadPageFinishType == WaitTimeExceed:
         print u'wait page load time exceed'
         return
     content = ""
