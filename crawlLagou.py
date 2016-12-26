@@ -110,7 +110,7 @@ def getFirefoxBrowser():
     browser = webdriver.Firefox(executable_path="geckodriver", firefox_profile=fp)
     # browser = webdriver.Firefox(executable_path="geckodriver")
 
-    browser.set_page_load_timeout(0)
+    browser.set_page_load_timeout(1)
     return browser
 
 
