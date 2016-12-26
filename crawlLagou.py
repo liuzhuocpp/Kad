@@ -125,6 +125,17 @@ WaitOK = 0 # 表示等待的fun函数已经执行成功并且返回了ResultOK
 WaitTimeExceed = 1 # 表示等待的fun函数已经执行一直未成功，并且超出了等待时间长度
 WaitTerminate = 2 # 表示等待的fun函数未成功，并且fun函数返回了ResultTerminate
 HtmlParser = "html.parser"
+Without_establishing_a_connection = "without establishing a connection"
+browser = None # 全局浏览器
+
+def restartBrowser():
+    global browser
+    try:
+        browser.quit()
+    except Exception, e:                    
+        print "when browser quit, some exception occurs:", e, "| just pass it"
+    browser = getFirefoxBrowser()
+    print "restart a new firefox browser"
 
 # 封装函数，等待函数执行确实执行完毕，或者超出了时间上限
 # 如果返回true表示执行成功，false表示超出时间上限
@@ -142,7 +153,7 @@ def waitFunctionFinish(fun, maxWaitTime = MaxWaitTime, sleepSeconds = 1):
     return WaitTimeExceed
 
 
-browser = None
+
 def _getCompanyInfo(cid):
     global browser
     print '\n\n', cid, "-"*100
@@ -164,10 +175,8 @@ def _getCompanyInfo(cid):
             print u"browser.get end-----"
         except Exception, e:
             print "WebDriverException occurs, and reload: ", e
-            if str(e).find("without establishing a connection") != -1: # need 重启firefox
-                browser.quit()
-                browser = getFirefoxBrowser()
-                print "restart a new firefox browser"
+            if str(e).find(Without_establishing_a_connection) != -1: # need 重启firefox
+                restartBrowser()
                 return ResultShouldWait
             
             # return ResultShouldWait
