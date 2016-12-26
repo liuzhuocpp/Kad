@@ -141,7 +141,10 @@ def waitFunctionFinish(fun, maxWaitTime = MaxWaitTime, sleepSeconds = 1):
     print "time excceed"
     return WaitTimeExceed
 
-def _getCompanyInfo(cid, browser):    
+
+browser = None
+def _getCompanyInfo(cid):
+    global browser
     print '\n\n', cid, "-"*100
     answer = {
         "cid":-1, 
@@ -155,11 +158,18 @@ def _getCompanyInfo(cid, browser):
     url = getCompanyInfoUrl(cid)    
     soup = None
     def ensureLoadPage():
+        global browser
         try:
             browser.get(url)
-            print u"browser.get end-----"            
+            print u"browser.get end-----"
         except Exception, e:
             print "WebDriverException occurs, and reload: ", e
+            if str(e).find("without establishing a connection") != -1: # need 重启firefox
+                browser.quit()
+                browser = getFirefoxBrowser()
+                print "restart a new firefox browser"
+                return ResultShouldWait
+            
             # return ResultShouldWait
         hasRealDataEC = AndEC(EC.presence_of_element_located((By.CSS_SELECTOR, CompanyNameSelector)),\
                             EC.presence_of_element_located((By.CSS_SELECTOR, CompanyBasicInfoSelector)),\
@@ -201,29 +211,31 @@ def _getCompanyInfo(cid, browser):
 
     if len(soup.select(ExpandOrFoldSelector)) == 0:
         content = soup.select(CompanyIntroSelector)[0].text
-        print "No expand button"
+        print "no expand button"
     elif soup.select(ExpandOrFoldSelector)[0].attrs.has_key("style") and\
          soup.select(ExpandOrFoldSelector)[0].attrs["style"].find("none") != -1:
         content = soup.select(CompanyIntroHasExpandSelector)[0].text
-        print "Expand button must be hided "
+        print "expand button must be hided "
         
     else :
         def checkExpandClickFinish():
+            global browser
             soup = BeautifulSoup(browser.page_source, HtmlParser)
             if soup.select(ExpandOrFoldSelector)[0].text == u'收起':
                 return ResultOK
             else:
-                print u"Not found expand button"
+                print u"not found expand button"
                 return ResultShouldWait
 
         def ensureClickFinish():
+            global browser
             try:
                 browser.find_element_by_css_selector(ExpandOrFoldSelector).click()
             except Exception, e:
-                print "Exception in ensureClickFinish: ", e
+                print "ensureClickFinish exception occurs: ", e
                 return ResultShouldWait
 
-            waitType = waitFunctionFinish(checkExpandClickFinish, maxWaitTime = 2, sleepSeconds = 0.5 )
+            waitType = waitFunctionFinish(checkExpandClickFinish, maxWaitTime = 2, sleepSeconds = 0.2 )
             if waitType == WaitOK:
                 return ResultOK
             elif waitType == WaitTimeExceed:
@@ -232,7 +244,7 @@ def _getCompanyInfo(cid, browser):
                 print u"unknown waitType in ensureChickFinish"
                 return ResultTerminate
 
-        waitType = waitFunctionFinish(ensureClickFinish, 30)
+        waitType = waitFunctionFinish(ensureClickFinish, 20)
         soup = BeautifulSoup(browser.page_source, HtmlParser)                
         if waitType == WaitOK:
             content = soup.select(CompanyIntroHasExpandSelector)[0].text
@@ -310,9 +322,12 @@ def getPosition(cid, browser):
 
         #soup = BeautifulSoup(browser.page_source, "html.parser")
 
-browser = getFirefoxBrowser()
+
 def getCompanyInfo(cid):
 
+    global browser
+    if browser == None:
+        browser = getFirefoxBrowser()
     
     answer = {
         "cid":-1, 
@@ -323,7 +338,7 @@ def getCompanyInfo(cid):
         "total":"", 
     }
     try:        
-        answer = _getCompanyInfo(cid, browser)
+        answer = _getCompanyInfo(cid)
     except Exception, e: # 当有任何Exception时候，直接pass
         print "Exception in getCompanyInfo", e
 
