@@ -92,7 +92,7 @@ def getFirefoxBrowser():
 
     fp = webdriver.FirefoxProfile()
 
-    fp.add_extension('closeproxy.xpi')
+    fp.add_extension('resource/closeproxy.xpi')
     fp.set_preference('network.proxy.type', 1)
     fp.set_preference('network.proxy.http', proxy['host'])
     fp.set_preference('network.proxy.http_port', int(proxy['port']))
@@ -107,7 +107,7 @@ def getFirefoxBrowser():
     credentials = '{usr}:{pwd}'.format(**proxy)
     credentials = b64encode(credentials.encode('ascii')).decode('utf-8')
     fp.set_preference('extensions.closeproxyauth.authtoken', credentials)
-    browser = webdriver.Firefox(executable_path="geckodriver", firefox_profile=fp)
+    browser = webdriver.Firefox(executable_path="resource/geckodriver", firefox_profile=fp)
     # browser = webdriver.Firefox(executable_path="geckodriver")
 
     browser.set_page_load_timeout(1)
