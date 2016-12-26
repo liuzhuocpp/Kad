@@ -125,7 +125,11 @@ WaitOK = 0 # 表示等待的fun函数已经执行成功并且返回了ResultOK
 WaitTimeExceed = 1 # 表示等待的fun函数已经执行一直未成功，并且超出了等待时间长度
 WaitTerminate = 2 # 表示等待的fun函数未成功，并且fun函数返回了ResultTerminate
 HtmlParser = "html.parser"
+
 Without_establishing_a_connection = "without establishing a connection"
+This_browserForTab_is_undefined = "this.browserForTab is undefined"
+Failed_to_decode_response_from_marionette = "Failed to decode response from marionette"
+
 browser = None # 全局浏览器
 
 def restartBrowser():
@@ -175,7 +179,9 @@ def _getCompanyInfo(cid):
             print u"browser.get end-----"
         except Exception, e:
             print "WebDriverException occurs, and reload: ", e
-            if str(e).find(Without_establishing_a_connection) != -1: # need 重启firefox
+            if str(e).find(Without_establishing_a_connection) != -1 or\
+               str(e).find(This_browserForTab_is_undefined) != -1 or \
+               str(e).find(Failed_to_decode_response_from_marionette) != -1: # need 重启firefox
                 restartBrowser()
                 return ResultShouldWait
             
