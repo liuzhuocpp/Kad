@@ -273,7 +273,7 @@ def _getCompanyInfo(cid):
                 print u"unknown waitType in ensureChickFinish"
                 return ResultTerminate
 
-        waitType = waitFunctionFinish(ensureClickFinish, 30)
+        waitType = waitFunctionFinish(ensureClickFinish, 20, 2)
         soup = BeautifulSoup(browser.page_source, HtmlParser)                
         if waitType == WaitOK:
             content = soup.select(CompanyIntroHasExpandSelector)[0].text
