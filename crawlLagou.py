@@ -90,9 +90,11 @@ def getChromeBrowser():
 def getFirefoxBrowser():
     proxy = {'host': "proxy.abuyun.com", 'port': 9020, 'usr': "HWJB1R49VGL78Q3D", 'pwd': "0C29FFF1CB8308C4"}
 
-    fp = webdriver.FirefoxProfile()
+    userProfileFilePath = r"C:\Users\LZ\AppData\Roaming\Mozilla\Firefox\Profiles\vbqy66hj.default"
+    fp = webdriver.FirefoxProfile(userProfileFilePath)
 
     fp.add_extension('resource/closeproxy.xpi')
+
     fp.set_preference('network.proxy.type', 1)
     fp.set_preference('network.proxy.http', proxy['host'])
     fp.set_preference('network.proxy.http_port', int(proxy['port']))
@@ -102,8 +104,11 @@ def getFirefoxBrowser():
     fp.set_preference('network.proxy.ftp_port', int(proxy['port']))       
     fp.set_preference('network.proxy.no_proxies_on', 'localhost, 127.0.0.1')
 
+
+
 # 禁止浏览器访问图片信息
     fp.set_preference('permissions.default.image', 2)
+
     credentials = '{usr}:{pwd}'.format(**proxy)
     credentials = b64encode(credentials.encode('ascii')).decode('utf-8')
     fp.set_preference('extensions.closeproxyauth.authtoken', credentials)
@@ -171,14 +176,14 @@ def checkNeedRestartBrowserException(exception):
         return False
 
 #如果click成功，返回True，否则False        
-def ensureClickSuccessfully(browserWrapper, locator, checkSuccessfulAfterClick):    
+def ensureClickSuccessfully(browserWrapper, locator, checkSuccessfulAfterClick, maxWaitTime = 2, sleepSeconds = 0.4):    
     try:
         browserWrapper.value.find_element_by_css_selector(locator).click()
     except Exception, e:
         print "ensureClickSuccessfully exception occurs: ", e
         return False
 
-    waitResult = waitFunctionFinish(checkSuccessfulAfterClick, maxWaitTime = 2, sleepSeconds = 0.4)
+    waitResult = waitFunctionFinish(checkSuccessfulAfterClick, maxWaitTime = maxWaitTime, sleepSeconds = sleepSeconds)
     if waitResult:
         return True
     else:
@@ -328,8 +333,116 @@ def getCompanyInfo(cid):
 def getCompanyJobsUrl(cid):
     return "https://www.lagou.com/gongsi/j" + str(cid) + ".html"
 
-def getCompanyJobsInfo(cid):
-    pass
+JobInfoSelector = ".con_list_item"
+JobTotalNumberSelector = "#company_navs .current a"
+
+def getJobTotalNumber(soup):    
+    return int(filter(unicode.isdigit, soup.select(JobTotalNumberSelector)[0].text))
+
+class CompanyJobsEC:
+    """ 
+    """    
+    def __init__(self):
+        pass
+        
+    def __call__(self, browser):        
+        
+
+        if EC.presence_of_element_located((By.CSS_SELECTOR, JobTotalNumberSelector))(browser):
+            soup = BeautifulSoup(browser.page_source, HtmlParser)
+            jobTotalNumber = getJobTotalNumber(soup)                        
+            firstPageJobNumber = min(10, jobTotalNumber)
+            if len(soup.select(JobInfoSelector)) == firstPageJobNumber:
+                return True
+        return False
+
+
+DisapperedText = u"亲，你来晚了，该信息已经被删除鸟~"
+
+def buildEmptyJobInfo():
+    job = {
+        'name': "",
+        'salary':"",
+    }
+    return job
+
+def getCompanyJobListInPage(soup):
+    
+    jobList = []
+    for jobTag in soup.select(JobInfoSelector):
+        job = buildEmptyJobInfo()
+        job['name'] = jobTag.select("div a")[0].text.replace(" ", "").replace("\n", "").encode(encodeName, "ignore")
+        job['salary'] = jobTag.select("p .item_salary")[0].text.strip()
+        print job['name']
+        print job['salary']
+        jobList.append(job)
+    return jobList
+
+def getDefaultBeautifulSoup(browserWrapper):
+    return BeautifulSoup(browserWrapper.value.page_source, HtmlParser)
+
+
+def checkCompanyJobsClickFinish(browserWrapper, currentPageNumber):
+
+    soup = BeautifulSoup(browserWrapper.value.page_source, HtmlParser)
+
+    # print 'ffff', soup.select(".pages")
+    currentPageTagList = soup.select(".pages .current")
+    print "checkCompanyJobsClickFinish  ", currentPageTagList
+
+    if len(currentPageTagList) != 1: return False
+    print "checkCompanyJobsClickFinish___+++  ", currentPageNumber, int(currentPageTagList[0].text)
+    ans = (currentPageNumber == int(currentPageTagList[0].text))
+    print '------ =====', ans
+    return ans
+
+def _getCompanyJobsInfo(cid, browserWrapper):
+    print '\n'*3 + "getCompanyJobsInfo: " + str(cid) + '-'*100
+    url = getCompanyJobsUrl(cid)
+    answer = []
+
+    indexWrapper = Wrapper(-1)
+    disapperTextEC = EC.text_to_be_present_in_element((By.CSS_SELECTOR, ".content"),DisapperedText)
+    page404EC = EC.presence_of_element_located((By.CSS_SELECTOR, Page404Selector))
+    jobEC = OrEC(indexWrapper, CompanyJobsEC(), disapperTextEC,  page404EC)
+
+    waitResult = waitFunctionFinish(lambda:ensureLoadPageSuccessfully(browserWrapper, url,  jobEC ), 10, 2)
+
+    soup = BeautifulSoup(browserWrapper.value.page_source, HtmlParser)
+    
+    if waitResult == True:
+        if indexWrapper.value == 0:            
+            jobTotalNumber = getJobTotalNumber(soup)
+            print "jobTotalNumber: " + str(jobTotalNumber)
+            soup = BeautifulSoup(browserWrapper.value.page_source, HtmlParser)
+            answer = getCompanyJobListInPage(soup)
+        elif indexWrapper.value == 1:
+            print "DisapperedText"
+            return answer
+        elif indexWrapper.value == 2:
+            print "page404"
+            return answer
+        else:
+            print "unknow"
+            return answer
+    else:
+        print "error ============="
+        return answer
+
+    totalPageNumber = jobTotalNumber / 10 
+    if jobTotalNumber % 10 != 0: totalPageNumber += 1
+
+    for currentPageNumber in xrange(2, totalPageNumber + 1):
+        print "get page " + str(currentPageNumber) + '='*50
+        waitResult = waitFunctionFinish(lambda:ensureClickSuccessfully(browserWrapper, ".next", \
+            lambda : checkCompanyJobsClickFinish(browserWrapper, currentPageNumber), 5, 1), 10, 2)
+        if waitResult:
+            soup = getDefaultBeautifulSoup(browserWrapper)
+            answer.extend(getCompanyJobListInPage(soup))
+        else:
+            print 'get page ' + str(currentPageNumber) + ' not successful'
+
+    return answer
 
 
 def getPosition(cid, browser):
@@ -381,18 +494,20 @@ def getPosition(cid, browser):
 
 if __name__ == '__main__':
 
-    for cid in range(22824, 52824 + 1):
+    # browserWrapper = Wrapper(getFirefoxBrowser())
+    for cid in range(34551, 34551 + 1):
+        
+        _getCompanyJobsInfo(cid, globalBrowserWrapper)
         # answer = getCompanyInfo(cid)
-        answer = getCompanyInfo(cid)
-        print "answer:" + "-"*50
-        print "answer cid:", answer['cid']
-        print "answer name:", answer['name']
-        print "answer content:", answer['content']
-        print "answer tag:", answer['tag']
-        print "answer process:", answer['process']
-        print "answer total:", answer['total']
-        print "answer url:", answer['url']
-        print "answer salary:", answer['salary']
+        # print "answer:" + "-"*50
+        # print "answer cid:", answer['cid']
+        # print "answer name:", answer['name']
+        # print "answer content:", answer['content']
+        # print "answer tag:", answer['tag']
+        # print "answer process:", answer['process']
+        # print "answer total:", answer['total']
+        # print "answer url:", answer['url']
+        # print "answer salary:", answer['salary']
 
 
     # try:        
