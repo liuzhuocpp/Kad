@@ -8,14 +8,24 @@ client = MongoClient()
 db = client['result']
 col = db['lagou']
 
+encodeName = "gb18030"
+
 def storage():
-	browser = getFirefoxBrowser()
-	for cid in range(22708, 22710+1):
+	for cid in range(22708, 160999+1):
 		if col.find_one({"cid": cid}) == None:
-			info = crawLagou.getCompanyInfo(cid, browser) # return dict
-			if info.cid != -1 and info.total != 0 :
+			info = crawlLagou.getCompanyInfo(cid) # return dict
+			# if info['cid'] != -1 and info['total'] != 0 :
+			if info['cid'] != -1:
+				info = mongoEncoding(info)
 				col.insert(info)
 				# salary = getPosition(cid, browser) # return array
 				# for item in salary:
 				# 	col.update({"cid": cid}, {"$push", {"salary": item}})
 
+def mongoEncoding(obj):
+	for item in obj:
+		if isinstance(obj[item], str):
+			obj[item] = obj[item].decode(encodeName).encode("utf-8")
+	return obj
+
+storage()
