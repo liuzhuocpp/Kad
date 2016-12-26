@@ -113,22 +113,9 @@ def getFirefoxBrowser():
     browser.set_page_load_timeout(1)
     return browser
 
-
-
-
 def getCompanyInfoUrl(cid):
     return "https://www.lagou.com/gongsi/" + str(cid) + ".html"
 
-# 函数返回类型    
-# fun的返回值类型：
-ResultOK = 0 # 表示函数执行成功立即返回
-ResultShouldWait = 1 # 表示函数执行未成功，但未发现严重错误，应继续sleep and wait
-ResultTerminate = 2 # 表示函数执行未成功，并且发现严重错误，应立即停止
-
-# waitFunctionFinish的返回值类型：
-WaitOK = 0 # 表示等待的fun函数已经执行成功并且返回了ResultOK
-WaitTimeExceed = 1 # 表示等待的fun函数已经执行一直未成功，并且超出了等待时间长度
-WaitTerminate = 2 # 表示等待的fun函数未成功，并且fun函数返回了ResultTerminate
 HtmlParser = "html.parser"
 
 Without_establishing_a_connection = "without establishing a connection"
@@ -151,21 +138,64 @@ def restartBrowser():
 # fun是一个函数，参数为空，
 def waitFunctionFinish(fun, maxWaitTime = MaxWaitTime, sleepSeconds = 1):
     for i in xrange(maxWaitTime):
-        resultType = fun()
-        if resultType == ResultOK:
-            return WaitOK
-        elif resultType == ResultShouldWait:
-            time.sleep(sleepSeconds)
+        result = None
+        try:
+            result = fun()
+        except Exception, e:
+            pass            
+        if result:
+            return result
         else:
-            return WaitTerminate
-    print "time excceed"
-    return WaitTimeExceed
+            time.sleep(sleepSeconds)
+    print "waitFunctionFinish: time excceed"
+    return None
 
+def checkNeedRestartBrowserException(exception):
+    e = str(exception)
+    if e.find(Without_establishing_a_connection) != -1 or\
+       e.find(This_browserForTab_is_undefined) != -1 or \
+       e.find(Failed_to_decode_response_from_marionette) != -1: # need 重启firefox
+        return True
+    else:
+        return False
+
+#如果click成功，返回True，否则False        
+def ensureClickSuccessfully(browser, locator, checkSuccessfulAfterClick):    
+    try:
+        browser.find_element_by_css_selector(locator).click()
+    except Exception, e:
+        print "ensureClickSuccessfully exception occurs: ", e
+        return False
+
+    waitResult = waitFunctionFinish(checkSuccessfulAfterClick, maxWaitTime = 2, sleepSeconds = 0.4)
+    if waitResult:
+        return True
+    else:
+        return False
+
+#如果url load 成功，返回True，否则False
+def ensureLoadPageSuccessfully(browser, url, expectedConditions):
+    try:
+        browser.get(url)
+        print u"browser.get end-----"
+    except Exception, e:
+        print "ensureLoadPageSuccessfully exception occurs : ", e
+        if checkNeedRestartBrowserException(e):
+            restartBrowser()
+            return False
+
+    try:
+        element = WebDriverWait(browser, 10).until(expectedConditions)
+    except Exception, e:   
+        print "Error in wait page element load finish: ", e
+        return False
+    return True
 
 
 def _getCompanyInfo(cid):
     global browser
     print '\n\n', cid, "-"*100
+    url = getCompanyInfoUrl(cid)
     answer = {
         "cid":-1, 
         "name":"", 
@@ -173,71 +203,45 @@ def _getCompanyInfo(cid):
         "tag":"", 
         "process":"", 
         "total":"", 
+        "url": url,
+        "salary":[],
     }
+    
 
-    url = getCompanyInfoUrl(cid)    
-    soup = None
     ansIndex = [-1]
-    def ensureLoadPage():
-        global browser
-        try:
-            browser.get(url)
-            print u"browser.get end-----"
-        except Exception, e:
-            print "WebDriverException occurs, and reload: ", e
-            if str(e).find(Without_establishing_a_connection) != -1 or\
-               str(e).find(This_browserForTab_is_undefined) != -1 or \
-               str(e).find(Failed_to_decode_response_from_marionette) != -1: # need 重启firefox
-                restartBrowser()
-                return ResultShouldWait
-            
-            # return ResultShouldWait
-        hasRealDataEC = AndEC(EC.presence_of_element_located((By.CSS_SELECTOR, CompanyNameSelector)),\
-                            EC.presence_of_element_located((By.CSS_SELECTOR, CompanyBasicInfoSelector)),\
-                            EC.presence_of_element_located((By.CSS_SELECTOR, CompanyIntroSelector)))
-        page404EC = EC.presence_of_element_located((By.CSS_SELECTOR, Page404Selector))
-        pageStillConstructionEC = EC.presence_of_element_located((By.CSS_SELECTOR, PageStillConstructionSelector))
+    hasRealDataEC = AndEC(EC.presence_of_element_located((By.CSS_SELECTOR, CompanyNameSelector)),\
+                        EC.presence_of_element_located((By.CSS_SELECTOR, CompanyBasicInfoSelector)),\
+                        EC.presence_of_element_located((By.CSS_SELECTOR, CompanyIntroSelector)))
+    page404EC = EC.presence_of_element_located((By.CSS_SELECTOR, Page404Selector))
+    pageStillConstructionEC = EC.presence_of_element_located((By.CSS_SELECTOR, PageStillConstructionSelector))
+    allEC = OrEC(ansIndex, hasRealDataEC, page404EC, pageStillConstructionEC)        
 
-        # ansIndex = [-1]
-        allEC = OrEC(ansIndex, hasRealDataEC, page404EC, pageStillConstructionEC)        
-        try:
-            element = WebDriverWait(browser, 10).until(allEC)
-        except Exception, e:   
-            print "Error in wait page element load finish: ", e
-            return ResultShouldWait
-
-        # ansIndex = ansIndex[0]
-        if ansIndex[0] == 0:
-            return ResultOK
-        elif ansIndex[0] == 1:
-            print "page404"
-            return ResultTerminate
-        elif ansIndex[0] == 2:
-            print u"company page still construction"
-            return ResultTerminate
-        else:
-            print u"Error ansIndex:", ansIndex
-            return ResultTerminate
-
-    waitLoadPageFinishType = waitFunctionFinish(ensureLoadPage)
-    if waitLoadPageFinishType == WaitTerminate:
-        if ansIndex[0] == 1:
-            answer['cid'] = cid
-            answer['name'] = Page404Name
-        elif ansIndex[0] == 2:
-            answer['cid'] = cid
-            answer['name'] = PageStillConstructionName
-        else:
-            pass
+    waitResult = waitFunctionFinish(lambda: ensureLoadPageSuccessfully(browser, url, allEC))
+    if bool(waitResult) == False:
         return answer
-    if waitLoadPageFinishType == WaitTimeExceed:
-        print u'wait page load time exceed'
-        return answer
-    content = ""
 
-    # 获取 公司简介内容content：
+    if ansIndex[0] == 0:
+        pass    
+    elif ansIndex[0] == 1:
+        print Page404Name
+        answer['cid'] = cid
+        answer['name'] = Page404Name
+        return answer        
+    elif ansIndex[0] == 2:
+        print PageStillConstructionName
+        answer['cid'] = cid
+        answer['name'] = PageStillConstructionName
+        return answer
+    else:
+        print u"Error ansIndex:", ansIndex
+        return answer
+
+    
+
+    
     soup = BeautifulSoup(browser.page_source, HtmlParser)
-
+    # 获取 公司简介内容content:
+    content = ""
     if len(soup.select(ExpandOrFoldSelector)) == 0:
         content = soup.select(CompanyIntroSelector)[0].text
         print "no expand button"
@@ -251,36 +255,18 @@ def _getCompanyInfo(cid):
             global browser
             soup = BeautifulSoup(browser.page_source, HtmlParser)
             if soup.select(ExpandOrFoldSelector)[0].text == u'收起':
-                return ResultOK
+                return True
             else:
                 print u"not found expand button"
-                return ResultShouldWait
+                return False
 
-        def ensureClickFinish():
-            global browser
-            try:
-                browser.find_element_by_css_selector(ExpandOrFoldSelector).click()
-            except Exception, e:
-                print "ensureClickFinish exception occurs: ", e
-                return ResultShouldWait
-
-            waitType = waitFunctionFinish(checkExpandClickFinish, maxWaitTime = 2, sleepSeconds = 0.2 )
-            if waitType == WaitOK:
-                return ResultOK
-            elif waitType == WaitTimeExceed:
-                return ResultShouldWait
-            else:
-                print u"unknown waitType in ensureChickFinish"
-                return ResultTerminate
-
-        waitType = waitFunctionFinish(ensureClickFinish, 20, 2)
-        soup = BeautifulSoup(browser.page_source, HtmlParser)                
-        if waitType == WaitOK:
+        waitResult = waitFunctionFinish(lambda : ensureClickSuccessfully(browser, ExpandOrFoldSelector, checkExpandClickFinish), 20, 1)
+        soup = BeautifulSoup(browser.page_source, HtmlParser)
+        if waitResult:
             content = soup.select(CompanyIntroHasExpandSelector)[0].text
         else:
             print u'expand the company intro info not successful'
             content = soup.select(CompanyIntroSelector)[0].text
-
 
 
     content = content.encode(encodeName, "ignore")
@@ -288,8 +274,7 @@ def _getCompanyInfo(cid):
     name = soup.select(CompanyNameSelector)[0].text.strip()
     info = soup.select(CompanyBasicInfoSelector)
     tag = info[0].find('span').text.encode(encodeName, "ignore")
-    process = info[1].find('span').text.encode(encodeName, "ignore")
-    
+    process = info[1].find('span').text.encode(encodeName, "ignore")   
 
 
     print "company cid:", cid
@@ -299,15 +284,39 @@ def _getCompanyInfo(cid):
     print "company process:", process
     print "company total:", total
 
-    answer = {
-        "cid":cid, 
-        "name":name, 
-        "content":content, 
-        "tag":tag, 
-        "process":process, 
-        "total":total, 
-    }
+    answer['cid'] = cid
+    answer['name'] = name
+    answer['content'] = content
+    answer['tag'] = tag
+    answer['process'] = process
+    answer['total'] = total
     return answer
+
+
+
+
+def getCompanyInfo(cid):
+
+    global browser
+    if browser == None:
+        browser = getFirefoxBrowser()
+    
+    try:        
+        answer = _getCompanyInfo(cid)
+    except Exception, e: # 当有任何Exception时候，直接pass
+        print "Exception in getCompanyInfo", e
+
+    time.sleep(2)
+    return answer
+
+
+
+
+def getCompanyJobsUrl(cid):
+    return "https://www.lagou.com/gongsi/j" + str(cid) + ".html"
+
+def getCompanyJobsInfo(cid):
+    pass
 
 
 def getPosition(cid, browser):
@@ -352,29 +361,8 @@ def getPosition(cid, browser):
         #soup = BeautifulSoup(browser.page_source, "html.parser")
 
 
-def getCompanyInfo(cid):
 
-    global browser
-    if browser == None:
-        browser = getFirefoxBrowser()
-    
-    answer = {
-        "cid":-1, 
-        "name":"", 
-        "content":"", 
-        "tag":"", 
-        "process":"", 
-        "total":"", 
-    }
-    try:        
-        answer = _getCompanyInfo(cid)
-    except Exception, e: # 当有任何Exception时候，直接pass
-        print "Exception in getCompanyInfo", e
 
-    answer["url"] = getCompanyInfoUrl(cid)
-    answer["salary"] = []
-    time.sleep(2)
-    return answer
 
 
 
