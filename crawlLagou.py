@@ -28,7 +28,12 @@ CompanyIntroSelector = ".company_intro_text"
 CompanyIntroHasExpandSelector = ".company_intro_text .company_content"
 CompanyNavsSelector = '#company_navs li'
 ExpandOrFoldSelector = ".text_over"
-Page404 = ".page404"
+
+Page404Selector = ".page404"
+PageStillConstructionSelector = ".incomplete_tips"
+Page404Name = "page404"
+PageStillConstructionName = "still_construction"
+
 MaxWaitTime = 10
 
 
@@ -172,6 +177,7 @@ def _getCompanyInfo(cid):
 
     url = getCompanyInfoUrl(cid)    
     soup = None
+    ansIndex = [-1]
     def ensureLoadPage():
         global browser
         try:
@@ -189,24 +195,24 @@ def _getCompanyInfo(cid):
         hasRealDataEC = AndEC(EC.presence_of_element_located((By.CSS_SELECTOR, CompanyNameSelector)),\
                             EC.presence_of_element_located((By.CSS_SELECTOR, CompanyBasicInfoSelector)),\
                             EC.presence_of_element_located((By.CSS_SELECTOR, CompanyIntroSelector)))
-        page404EC = EC.presence_of_element_located((By.CSS_SELECTOR, Page404))
-        pageStillConstruction = EC.presence_of_element_located((By.CSS_SELECTOR, ".incomplete_tips"))
+        page404EC = EC.presence_of_element_located((By.CSS_SELECTOR, Page404Selector))
+        pageStillConstructionEC = EC.presence_of_element_located((By.CSS_SELECTOR, PageStillConstructionSelector))
 
-        ansIndex = [-1]
-        allEC = OrEC(ansIndex, hasRealDataEC, page404EC, pageStillConstruction)        
+        # ansIndex = [-1]
+        allEC = OrEC(ansIndex, hasRealDataEC, page404EC, pageStillConstructionEC)        
         try:
             element = WebDriverWait(browser, 10).until(allEC)
         except Exception, e:   
             print "Error in wait page element load finish: ", e
             return ResultShouldWait
 
-        ansIndex = ansIndex[0]
-        if ansIndex == 0:
+        # ansIndex = ansIndex[0]
+        if ansIndex[0] == 0:
             return ResultOK
-        elif ansIndex == 1:
+        elif ansIndex[0] == 1:
             print "page404"
             return ResultTerminate
-        elif ansIndex == 2:
+        elif ansIndex[0] == 2:
             print u"company page still construction"
             return ResultTerminate
         else:
@@ -215,6 +221,14 @@ def _getCompanyInfo(cid):
 
     waitLoadPageFinishType = waitFunctionFinish(ensureLoadPage)
     if waitLoadPageFinishType == WaitTerminate:
+        if ansIndex[0] == 1:
+            answer['cid'] = cid
+            answer['name'] = Page404Name
+        elif ansIndex[0] == 2:
+            answer['cid'] = cid
+            answer['name'] = PageStillConstructionName
+        else:
+            pass
         return answer
     if waitLoadPageFinishType == WaitTimeExceed:
         print u'wait page load time exceed'
