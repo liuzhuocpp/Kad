@@ -191,11 +191,7 @@ def ensureLoadPageSuccessfully(browser, url, expectedConditions):
         return False
     return True
 
-
-def _getCompanyInfo(cid):
-    global browser
-    print '\n\n', cid, "-"*100
-    url = getCompanyInfoUrl(cid)
+def getEmptyCompanyInfo(url):
     answer = {
         "cid":-1, 
         "name":"", 
@@ -206,6 +202,13 @@ def _getCompanyInfo(cid):
         "url": url,
         "salary":[],
     }
+    return answer
+
+def _getCompanyInfo(cid):
+    global browser
+    print '\n\n', cid, "-"*100
+    url = getCompanyInfoUrl(cid)
+    answer = getEmptyCompanyInfo(url)
     
 
     ansIndex = [-1]
@@ -297,10 +300,11 @@ def _getCompanyInfo(cid):
 
 def getCompanyInfo(cid):
 
-    global browser
+    global browser    
     if browser == None:
         browser = getFirefoxBrowser()
     
+    answer = getEmptyCompanyInfo(getCompanyInfoUrl(cid))
     try:        
         answer = _getCompanyInfo(cid)
     except Exception, e: # 当有任何Exception时候，直接pass
