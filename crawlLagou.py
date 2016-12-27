@@ -463,17 +463,85 @@ def getCompanyJobsInfo(cid):
 
     return answer
 
+import json 
+
+
+
+def getCompanyJobsInfoFromJsonUrl(cid, pageNo):
+    return "https://www.lagou.com/gongsi/searchPosition.json?companyId="+str(cid)+"&pageNo="+str(pageNo)
+
+def _getCompanyJobsInfoFromJson(cid, browserWrapper, pageNo):
+    url = getCompanyJobsInfoFromJsonUrl(cid, pageNo)
+    # try:
+    #     browserWrapper.value.get(url)
+    # except Exception, e:
+    #     pass
+
+    jobDataJsonEC = EC.text_to_be_present_in_element((By.CSS_SELECTOR, "body"), "totalCount")
+    waitResult = waitFunctionFinish(lambda:ensureLoadPageSuccessfully(browserWrapper, url,  jobDataJsonEC ), 10, 2)
+    answer = []
+    if waitResult:
+        soup = getDefaultBeautifulSoup(browserWrapper)
+        jsonDataString = soup.select("body")[0].text
+        # print jsonDataString
+        jsonData = json.loads(jsonDataString)
+        jobDataList = jsonData['content']['data']['page']['result']
+
+        for jobData in jobDataList:
+            job = buildEmptyJobInfo()
+            job['name'] = jobData['positionName']
+            job['salary'] = jobData['salary']            
+            answer.append(job)
+
+        totalCount = int(jsonData['content']['data']['page']['totalCount'])
+        print '\n' * 2 + 'page number:' + str(pageNo) + " has " + str(len(answer)) + " job info" 
+        for job in answer:
+            print job["name"], job['salary']
+        return (answer, totalCount)
+    else:
+        print "get company jobs info list failed"
+        return (answer, -1);
+
+
+'''
+每页最多countPerPage 个job，一共有totalCount个页
+返回总共页数
+'''
+def calculateTotalPageNumberInJobPage(totalCount, countPerPage = 10):
+    ans = totalCount / countPerPage
+    if totalCount % countPerPage != 0:
+        ans += 1
+    return ans
+
+
+def getCompanyJobsInfoFromJson(cid):
+
+    answer, totalCount = _getCompanyJobsInfoFromJson(cid, globalBrowserWrapper, 1)
+
+    totalPageNumber = calculateTotalPageNumberInJobPage(totalCount)
+    for i in xrange(2, totalPageNumber + 1):
+        tmpAnswer, tmpTotalCount = _getCompanyJobsInfoFromJson(cid, globalBrowserWrapper, i)
+        answer.extend(tmpAnswer)
+        if tmpTotalCount != totalCount:
+            print "error in page:" + str(i) + ", tmpTotalCount != totalCount"
+
+    return answer
+
 
 if __name__ == '__main__':
 
     # browserWrapper = Wrapper(getFirefoxBrowser())
-    for cid in range(34683, 134551 + 1):
+    for cid in range(34683, 34683 + 1):
         print '*'*150
         
+        
+
+
+        # continue
         companyInfoAnswer = getCompanyInfo(cid)
-        companyJobsAnswer = getCompanyJobsInfo(cid)
+        # companyJobsAnswer = getCompanyJobsInfo(cid)
 
-
+        companyJobsAnswer = getCompanyJobsInfoFromJson(cid)
 
         print "companyInfoAnswer:" + "-"*50
         print "companyInfoAnswer cid:", companyInfoAnswer['cid']
@@ -488,6 +556,11 @@ if __name__ == '__main__':
         print "companyJobsAnswer total:" , len(companyJobsAnswer)
         for item in companyJobsAnswer:
             print "companyJobsAnswer: " , item['name'], item['salary']
+
+
+
+
+
         # answer = getCompanyInfo(cid)
         # print "answer:" + "-"*50
         # print "answer cid:", answer['cid']
