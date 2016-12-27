@@ -19,8 +19,8 @@ def isValidCompanyInfo(companyInfo):
 	return True
 
 def storage():
-	# for cid in range(22708, 160999+1):
 	for cid in xrange(22708, 160999+1):
+	# for cid in xrange(23622, 23622+1):
 		infoObj = col.find_one({"cid": cid})
 		if infoObj == None:
 			info = crawlLagou.getCompanyInfo(cid) # return dict
@@ -37,6 +37,7 @@ def storage():
 			if len(infoObj['salary']) == 0 or len(infoObj['salary']) != infoObj['total']:
 				jobinfo = crawlLagou.getCompanyJobsInfoFromJson(cid)
 				col.update({"cid": cid}, {"$set": {"salary": []}})
+				col.update({"cid": cid}, {"$set": {"total": len(jobinfo)}})
 				for arrItem in jobinfo:
 					arrItem = mongoEncoding(arrItem)
 					salary = arrItem['salary']
