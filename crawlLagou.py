@@ -91,7 +91,9 @@ def getFirefoxBrowser():
     proxy = {'host': "proxy.abuyun.com", 'port': 9020, 'usr': "HWJB1R49VGL78Q3D", 'pwd': "0C29FFF1CB8308C4"}
 
     userProfileFilePath = r"C:\Users\LZ\AppData\Roaming\Mozilla\Firefox\Profiles\vbqy66hj.default"
-    fp = webdriver.FirefoxProfile(userProfileFilePath)
+    kadUserProfileFilePath = r"C:\Users\zml\AppData\Roaming\Mozilla\Firefox\Profiles\lotur5zd.default"
+
+    fp = webdriver.FirefoxProfile(kadUserProfileFilePath)
 
     fp.add_extension('resource/closeproxy.xpi')
 
@@ -214,7 +216,7 @@ def getEmptyCompanyInfo(url):
         "content":"", 
         "tag":"", 
         "process":"", 
-        "total":"", 
+        "total":0, 
         "url": url,
         "salary":[],
     }
@@ -470,7 +472,7 @@ import json
 def getCompanyJobsInfoFromJsonUrl(cid, pageNo):
     return "https://www.lagou.com/gongsi/searchPosition.json?companyId="+str(cid)+"&pageNo="+str(pageNo)
 
-def _getCompanyJobsInfoFromJson(cid, browserWrapper, pageNo):
+def _getCompanyJobsInfoFromJsonInOnePage(cid, browserWrapper, pageNo):
     url = getCompanyJobsInfoFromJsonUrl(cid, pageNo)
     # try:
     #     browserWrapper.value.get(url)
@@ -514,18 +516,29 @@ def calculateTotalPageNumberInJobPage(totalCount, countPerPage = 10):
     return ans
 
 
-def getCompanyJobsInfoFromJson(cid):
+def _getCompanyJobsInfoFromJson(cid):
 
-    answer, totalCount = _getCompanyJobsInfoFromJson(cid, globalBrowserWrapper, 1)
+
+    answer, totalCount = _getCompanyJobsInfoFromJsonInOnePage(cid, globalBrowserWrapper, 1)
 
     totalPageNumber = calculateTotalPageNumberInJobPage(totalCount)
     for i in xrange(2, totalPageNumber + 1):
-        tmpAnswer, tmpTotalCount = _getCompanyJobsInfoFromJson(cid, globalBrowserWrapper, i)
+        tmpAnswer, tmpTotalCount = _getCompanyJobsInfoFromJsonInOnePage(cid, globalBrowserWrapper, i)
         answer.extend(tmpAnswer)
         if tmpTotalCount != totalCount:
             print "error in page:" + str(i) + ", tmpTotalCount != totalCount"
 
     return answer
+
+def getCompanyJobsInfoFromJson(cid):
+    answer = []
+    try:
+        answer = _getCompanyJobsInfoFromJson(cid)
+    except Exception, e:
+        print "exception occurs in getCompanyJobsInfoFromJson, just pass it"
+    return answer
+            
+    
 
 
 if __name__ == '__main__':
