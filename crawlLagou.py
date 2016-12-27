@@ -222,7 +222,7 @@ def getEmptyCompanyInfo(url):
 
 def _getCompanyInfo(cid, browserWrapper):
     # global browser
-    print '\n\n', cid, "-"*100
+    print '\n'*4+'getting company info:'+ str(cid)+ "-"*100
     url = getCompanyInfoUrl(cid)
     answer = getEmptyCompanyInfo(url)
     
@@ -372,9 +372,8 @@ def getCompanyJobListInPage(soup):
     for jobTag in soup.select(JobInfoSelector):
         job = buildEmptyJobInfo()
         job['name'] = jobTag.select("div a")[0].text.replace(" ", "").replace("\n", "").encode(encodeName, "ignore")
-        job['salary'] = jobTag.select("p .item_salary")[0].text.strip()
-        print job['name']
-        print job['salary']
+        job['salary'] = jobTag.select("p .item_salary")[0].text.replace(" ", "").replace("\n", "")
+        print job['name'] , "|" , job['salary']
         jobList.append(job)
     return jobList
 
@@ -385,15 +384,9 @@ def getDefaultBeautifulSoup(browserWrapper):
 def checkCompanyJobsClickFinish(browserWrapper, currentPageNumber):
 
     soup = BeautifulSoup(browserWrapper.value.page_source, HtmlParser)
-
-    # print 'ffff', soup.select(".pages")
     currentPageTagList = soup.select(".pages .current")
-    print "checkCompanyJobsClickFinish  ", currentPageTagList
-
     if len(currentPageTagList) != 1: return False
-    print "checkCompanyJobsClickFinish___+++  ", currentPageNumber, int(currentPageTagList[0].text)
     ans = (currentPageNumber == int(currentPageTagList[0].text))
-    print '------ =====', ans
     return ans
 
 def _getCompanyJobsInfo(cid, browserWrapper):
@@ -426,7 +419,7 @@ def _getCompanyJobsInfo(cid, browserWrapper):
             print "unknow"
             return answer
     else:
-        print "error ============="
+        print "error in waitFunctionFinish , ensureLoadPageSuccessfully"
         return answer
 
     totalPageNumber = jobTotalNumber / 10 
@@ -435,7 +428,7 @@ def _getCompanyJobsInfo(cid, browserWrapper):
     for currentPageNumber in xrange(2, totalPageNumber + 1):
         print "get page " + str(currentPageNumber) + '='*50
         waitResult = waitFunctionFinish(lambda:ensureClickSuccessfully(browserWrapper, ".next", \
-            lambda : checkCompanyJobsClickFinish(browserWrapper, currentPageNumber), 5, 1), 10, 2)
+            lambda : checkCompanyJobsClickFinish(browserWrapper, currentPageNumber), 10, 1), 10, 2)
         if waitResult:
             soup = getDefaultBeautifulSoup(browserWrapper)
             answer.extend(getCompanyJobListInPage(soup))
@@ -445,59 +438,40 @@ def _getCompanyJobsInfo(cid, browserWrapper):
     return answer
 
 
-def getPosition(cid, browser):
-    print cid
-    pageNo = 1
-    time.sleep(4)
-    url = "https://www.lagou.com/gongsi/j" + str(cid) + ".html"
-    browser.get(url)
+def getCompanyJobsInfo(cid):
+    answer = []
+    try:
+        answer = _getCompanyJobsInfo(cid, globalBrowserWrapper)
+    except Exception, e:
+        print '_getCompanyJobsInfo exception occurs: ', e
 
-    # while 1:
-
-
-    soup = BeautifulSoup(browser.page_source, "html.parser")
-    # if col.find_one({'cid': cid})['total'] <= 10:
-    #     for ele in soup.select(".con_list_item > .item_detail > .item_salary"):
-    #         col.update({"cid": cid}, {"$push": {"salary": (ele.text).encode(encodeName, "ignore")}})
-    #     return
-
-    while 1:
-        for ele in soup.select(".con_list_item > .item_detail > .item_salary"):
-            pass
-            # col.update({"cid": cid}, {"$push": {"salary": (ele.text).encode(encodeName, "ignore")}})
-
-        tag = soup.select(".next")[0]
-        if len(tag['class']) == 2: # contain u'next', u'disable'
-            break;
-
-        browser.find_element_by_class_name("next").click()
-        time.sleep(4)
-        pageNo += 1
-        while 1:
-            soup = BeautifulSoup(browser.page_source, "html.parser")
-
-            newPage = soup.select('.pages > .current')[0].text.encode(encodeName, "ignore")
-            newPage = int(newPage)
-            print "New page number:", newPage, "; real page:", pageNo
-            if newPage and pageNo == newPage:
-                break
-            else:
-                time.sleep(1)
-
-        #soup = BeautifulSoup(browser.page_source, "html.parser")
-
-
-
-
-
+    return answer
 
 
 if __name__ == '__main__':
 
     # browserWrapper = Wrapper(getFirefoxBrowser())
-    for cid in range(34551, 34551 + 1):
+    for cid in range(34551, 134551 + 1):
+        print '*'*150
         
-        _getCompanyJobsInfo(cid, globalBrowserWrapper)
+        companyInfoAnswer = getCompanyInfo(cid)
+        companyJobsAnswer = getCompanyJobsInfo(cid)
+
+
+
+        print "companyInfoAnswer:" + "-"*50
+        print "companyInfoAnswer cid:", companyInfoAnswer['cid']
+        print "companyInfoAnswer name:", companyInfoAnswer['name']
+        print "companyInfoAnswer content:", companyInfoAnswer['content']
+        print "companyInfoAnswer tag:", companyInfoAnswer['tag']
+        print "companyInfoAnswer process:", companyInfoAnswer['process']
+        print "companyInfoAnswer total:", companyInfoAnswer['total']
+        print "companyInfoAnswer url:", companyInfoAnswer['url']
+        print "companyInfoAnswer salary:", companyInfoAnswer['salary']
+
+        print "companyJobsAnswer total:" , len(companyJobsAnswer)
+        for item in companyJobsAnswer:
+            print "companyJobsAnswer: " , item['name'], item['salary']
         # answer = getCompanyInfo(cid)
         # print "answer:" + "-"*50
         # print "answer cid:", answer['cid']
