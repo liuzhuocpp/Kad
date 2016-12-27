@@ -86,14 +86,13 @@ def getChromeBrowser():
     browser = webdriver.Chrome(executable_path="chromedriver", chrome_options=option)
     return browser
 
-
+import localData
 def getFirefoxBrowser():
     proxy = {'host': "proxy.abuyun.com", 'port': 9020, 'usr': "HWJB1R49VGL78Q3D", 'pwd': "0C29FFF1CB8308C4"}
 
-    userProfileFilePath = r"C:\Users\LZ\AppData\Roaming\Mozilla\Firefox\Profiles\vbqy66hj.default"
-    kadUserProfileFilePath = r"C:\Users\zml\AppData\Roaming\Mozilla\Firefox\Profiles\lotur5zd.default"
-
-    fp = webdriver.FirefoxProfile(kadUserProfileFilePath)
+    # userProfileFilePath = r"C:\Users\LZ\AppData\Roaming\Mozilla\Firefox\Profiles\vbqy66hj.default"
+    # kadUserProfileFilePath = r"C:\Users\zml\AppData\Roaming\Mozilla\Firefox\Profiles\lotur5zd.default"
+    fp = webdriver.FirefoxProfile(localData.FirefoxUserProfileFilePath)
 
     fp.add_extension('resource/closeproxy.xpi')
 
@@ -496,7 +495,7 @@ def _getCompanyJobsInfoFromJsonInOnePage(cid, browserWrapper, pageNo):
             answer.append(job)
 
         totalCount = int(jsonData['content']['data']['page']['totalCount'])
-        print '\n' * 2 + 'page number:' + str(pageNo) + " has " + str(len(answer)) + " job info" 
+        print '\n' * 2 + 'getting company cid:' + str(cid) +' , page number:' + str(pageNo) + " has " + str(len(answer)) + " job info" + '='*30
         for job in answer:
             print job["name"], job['salary']
         return (answer, totalCount)
@@ -544,7 +543,7 @@ def getCompanyJobsInfoFromJson(cid):
 if __name__ == '__main__':
 
     # browserWrapper = Wrapper(getFirefoxBrowser())
-    for cid in range(34683, 34683 + 1):
+    for cid in range(34683, 134683 + 1):
         print '*'*150
         
         

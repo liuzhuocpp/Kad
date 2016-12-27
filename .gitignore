@@ -48,3 +48,4 @@ Temporary Items
 *.log
 test.py
 crawlLagou.pyc
+*.pyc
