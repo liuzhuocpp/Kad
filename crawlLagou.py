@@ -380,14 +380,21 @@ def getCompanyJobListInPage(soup):
 def getDefaultBeautifulSoup(browserWrapper):
     return BeautifulSoup(browserWrapper.value.page_source, HtmlParser)
 
-
-def checkCompanyJobsClickFinish(browserWrapper, currentPageNumber):
-
+'''
+返回当前页面中.pages .current 的页码数，
+如果找不到，则返回-1
+'''
+def getCurrentPageNumberInPage(browserWrapper):
     soup = BeautifulSoup(browserWrapper.value.page_source, HtmlParser)
     currentPageTagList = soup.select(".pages .current")
-    if len(currentPageTagList) != 1: return False
-    ans = (currentPageNumber == int(currentPageTagList[0].text))
-    return ans
+    if len(currentPageTagList) != 1: return -1
+
+    return int(currentPageTagList[0].text)
+
+
+def checkCompanyJobsClickFinish(browserWrapper, currentShouldPageNumber):
+
+    return getCurrentPageNumberInPage(browserWrapper) >= currentShouldPageNumber
 
 def _getCompanyJobsInfo(cid, browserWrapper):
     print '\n'*3 + "getCompanyJobsInfo: " + str(cid) + '-'*100
@@ -427,9 +434,18 @@ def _getCompanyJobsInfo(cid, browserWrapper):
 
     for currentPageNumber in xrange(2, totalPageNumber + 1):
         print "get page " + str(currentPageNumber) + '='*50
+        currentPageNumberInPage = getCurrentPageNumberInPage(browserWrapper)
+        if currentPageNumberInPage > currentPageNumber:
+            print 'get page ' + str(currentPageNumber) + ' not successful'
+            continue
+        if currentPageNumberInPage == currentPageNumber:
+            soup = getDefaultBeautifulSoup(browserWrapper)
+            answer.extend(getCompanyJobListInPage(soup))
+            continue
+
         waitResult = waitFunctionFinish(lambda:ensureClickSuccessfully(browserWrapper, ".next", \
             lambda : checkCompanyJobsClickFinish(browserWrapper, currentPageNumber), 10, 1), 10, 2)
-        if waitResult:
+        if waitResult and getCurrentPageNumberInPage(browserWrapper) == currentPageNumber:
             soup = getDefaultBeautifulSoup(browserWrapper)
             answer.extend(getCompanyJobListInPage(soup))
         else:
@@ -451,7 +467,7 @@ def getCompanyJobsInfo(cid):
 if __name__ == '__main__':
 
     # browserWrapper = Wrapper(getFirefoxBrowser())
-    for cid in range(34551, 134551 + 1):
+    for cid in range(34683, 134551 + 1):
         print '*'*150
         
         companyInfoAnswer = getCompanyInfo(cid)
